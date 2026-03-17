@@ -1,0 +1,9 @@
+{
+  "rewrites": [
+    {
+      "source": "/get-movies",
+      "destination": "/api/get-movies"
+    }
+  ],
+  "public": "public"
+}
