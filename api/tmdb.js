@@ -1,7 +1,4 @@
 // Vercel Serverless Function: TMDB API Proxy
-// This replaces the Firebase Function to work natively on Vercel.
-
-const fetch = require('node-fetch');
 
 // Paths that are allowed to be proxied (whitelist for security)
 const ALLOWED_PATH_PREFIXES = [
@@ -44,12 +41,15 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Extract the TMDB path from the URL
-  // Vercel routes /api/tmdb/foo to this file. req.url will be /api/tmdb/foo
-  let tmdbPath = req.url.replace('/api/tmdb', '').split('?')[0] || '/';
-  
+  // FIX: Extract the TMDB path from req.query.path injected by Vercel's rewrite rule.
+  // req.url is NOT reliable here — after the rewrite, it loses the original path.
+  // The :path* segment from vercel.json rewrites is available as req.query.path.
+  const pathSegment = req.query.path
+    ? '/' + (Array.isArray(req.query.path) ? req.query.path.join('/') : req.query.path)
+    : '/';
+
   // Safety checks
-  tmdbPath = tmdbPath.replace(/\.\./g, '').replace(/\/+/g, '/');
+  let tmdbPath = pathSegment.replace(/\.\./g, '').replace(/\/+/g, '/');
   if (!tmdbPath.startsWith('/')) tmdbPath = '/' + tmdbPath;
 
   if (!isPathAllowed(tmdbPath)) {
@@ -62,10 +62,11 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: 'Server configuration error' });
   }
 
-  // Forward query params
+  // Forward query params — exclude internal/sensitive keys
+  // FIX: also exclude 'path' which is injected by Vercel's rewrite and must not be forwarded to TMDB
   const forwardedParams = new URLSearchParams();
   for (const [k, v] of Object.entries(req.query)) {
-    if (k !== 'api_key' && k !== 'access_token') {
+    if (k !== 'api_key' && k !== 'access_token' && k !== 'path') {
       forwardedParams.append(k, Array.isArray(v) ? v[0] : v);
     }
   }
@@ -74,16 +75,18 @@ module.exports = async (req, res) => {
   const upstream = `https://api.themoviedb.org/3${tmdbPath}?${forwardedParams.toString()}`;
 
   try {
+    // FIX: Use native fetch (available in Node 18+ on Vercel) instead of node-fetch v3,
+    // which is ESM-only and incompatible with CommonJS require().
     const tmdbRes = await fetch(upstream, {
       headers: {
         'Accept': 'application/json',
         'User-Agent': 'PopCornPlay/Vercel',
       },
-      timeout: 10000,
+      signal: AbortSignal.timeout(10000),
     });
 
     const body = await tmdbRes.json();
-    
+
     if (tmdbRes.ok) {
       res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate');
     }
