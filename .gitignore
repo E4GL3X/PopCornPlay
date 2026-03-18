@@ -1,21 +1,11 @@
-# Firebase
-.firebase/
-firebase-debug.log*
-firestore-debug.log*
-pubsub-debug.log*
-ui-debug.log*
-
-# Dependencies
+# Vercel
+.vercel
 node_modules/
-functions/node_modules/
 
-# ── SECRETS — NEVER COMMIT ──────────────────────────────
+# Secrets
 .env
 .env.local
 .env.*.local
-functions/.env
-functions/.env.local
-functions/.env.*.local
 
 # Build/Public
 public/index.html.bak
