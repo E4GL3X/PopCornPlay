@@ -1192,10 +1192,8 @@
 
   <script>
 
-    const API_BASE = '/get-movies';
-    const USE_TMDB_DIRECT = true;
-    const TMDB_DIRECT_KEY = '6355d589469ef8538ff6cbc89f95a40e';
-    const TMDB_DIRECT_BASE = 'https://api.themoviedb.org/3';
+    // All TMDB requests are proxied through the backend — API key is never exposed here.
+    const API_BASE = '/api/tmdb';
     const IMG_W342 = 'https://image.tmdb.org/t/p/w342';
     const IMG_W92 = 'https://image.tmdb.org/t/p/w92';
     const IMG_ORI = 'https://image.tmdb.org/t/p/original';
@@ -1211,17 +1209,9 @@
 
     const $ = id => document.getElementById(id);
 
-    function getApiBase() {
-      if (USE_TMDB_DIRECT) return TMDB_DIRECT_BASE;
-      return API_BASE;
-    }
-
     async function api(path, params = {}) {
       const query = new URLSearchParams(params);
-      const base = getApiBase();
-      const url = USE_TMDB_DIRECT
-        ? `${base}/${path.replace(/^\//, '')}?api_key=${encodeURIComponent(TMDB_DIRECT_KEY)}&${query}`
-        : `${base}?path=${encodeURIComponent(path)}&${query}`;
+      const url = `${API_BASE}${path.startsWith('/') ? '' : '/'}${path}?${query}`;
 
       try {
         const r = await fetch(url);
